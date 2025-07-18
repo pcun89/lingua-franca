@@ -1,0 +1,64 @@
+import threading
+import time
+from queue import Queue
+
+
+class Event:
+    """Simulated LF event with timestamp and payload"""
+    def __init__(self, payload, timestamp):
+        self.payload = payload
+        self.timestamp = timestamp
+
+
+class Reactor:
+    """Basic LF-style Reactor with input/output ports and a timer"""
+    def __init__(self, name):
+        self.name = name
+        self.inputQueue = Queue()
+        self.outputQueue = Queue()
+        self.currentTime = 0
+        self.lock = threading.Lock()
+
+    def triggerReaction(self):
+        """Processes input events and triggers output"""
+        while not self.inputQueue.empty():
+            event = self.inputQueue.get()
+            self.currentTime = max(self.currentTime, event.timestamp)
+            self.onInput(event)
+
+    def onInput(self, event):
+        """Reaction logic executed when input is received"""
+        print(f"[{self.name} @ {event.timestamp}] Received input: {event.payload}")
+        output_event = Event(f"Processed: {event.payload}", event.timestamp + 1)
+        self.outputQueue.put(output_event)
+
+    def sendInput(self, payload):
+        """Simulates external input with increasing logical time"""
+        event = Event(payload, self.currentTime + 1)
+        self.inputQueue.put(event)
+
+    def pollOutput(self):
+        """Reads all output events"""
+        outputs = []
+        while not self.outputQueue.empty():
+            outputs.append(self.outputQueue.get())
+        return outputs
+
+
+def simulate():
+    # Create and run a reactor
+    reactor = Reactor("ExampleReactor")
+    reactor.sendInput("Hello World")
+    reactor.triggerReaction()
+
+    outputs = reactor.pollOutput()
+    for out in outputs:
+        print(f"[{reactor.name} @ {out.timestamp}] Emitted output: {out.payload}")
+
+
+def main():
+    simulate()
+
+
+if __name__ == "__main__":
+    main()
